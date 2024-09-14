@@ -57,7 +57,7 @@ pub fn init(path: &str) -> Result<()> {
 pub fn cat_file(args: Commands) -> Result<()> {
     match args {
         Commands::CatFile { object, .. } => {
-            let data = read_blob(&object)?;
+            let data = decompress(&object)?;
             let content = data.split('\0')
                 .nth(1)
                 .with_context(|| format!("Corrupted object {}", object))?;
@@ -73,6 +73,7 @@ pub fn hash_object(args: Commands) -> Result<()> {
         Commands::HashObject { write, file } => {
             let object = compute_sha1(&file)?;
             print!("{}", object);
+
             if write {
                 let mut path = format!(
                     ".git/objects/{}/",
@@ -102,7 +103,7 @@ fn create_git_struct(path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn read_blob(object: &str) -> Result<String> {
+fn decompress(object: &str) -> Result<String> {
     const SHA1_LENGTH: usize = 40;
     if object.len() != SHA1_LENGTH {
         return Err(anyhow::anyhow!("Invalid object {}", object));
@@ -127,47 +128,39 @@ fn read_blob(object: &str) -> Result<String> {
     Ok(decompressed)
 }
 
-fn compute_sha1(file: &str) -> Result<String> {
-    let mut file = fs::File::open(file)?;
-    let mut content_buffer = Vec::new();
-    file.read_to_end(&mut content_buffer)?;
+fn create_blob(file_path: &str) -> Result<Vec<u8>> {
+    let mut file = fs::File::open(file_path)?;
+    let mut content = Vec::new();
+    file.read_to_end(&mut content)?;
 
-    let prefix = format!("blob {}\0", content_buffer.len());
+    let prefix = format!("blob {}\0", content.len());
     let prefix_bytes = prefix.as_bytes();
 
-    let mut buffer = Vec::with_capacity(
-        prefix_bytes.len() + 
-        content_buffer.len()
+    let mut blob = Vec::with_capacity(
+        prefix_bytes.len() + content.len()
     );
-    buffer.extend_from_slice(prefix_bytes);
-    buffer.extend(content_buffer);
+
+    blob.extend_from_slice(prefix_bytes);
+    blob.extend(content);
+    Ok(blob)
+}
+
+fn compute_sha1(file: &str) -> Result<String> {
+    let blob = create_blob(file)?;
 
     let mut hasher = Sha1::new();
-    hasher.update(buffer);
-
+    hasher.update(blob);
     let result = hasher.finalize();
-    Ok(format!("{:x}", result))
+
+    let hex = format!("{:x}", result);
+    Ok(hex)
 }
 
 fn compress(file: &str, output_path: &str) -> Result<()> {
-    let mut file = fs::File::open(file)?;
-
-    let mut content_buffer = Vec::new();
-    file.read_to_end(&mut content_buffer)?;
-
-    let prefix = format!("blob {}\0", content_buffer.len());
-    let prefix_bytes = prefix.as_bytes();
-
-    let mut buffer = Vec::with_capacity(
-        prefix_bytes.len() +
-        content_buffer.len()
-    );
-    buffer.extend_from_slice(prefix_bytes);
-    buffer.extend(content_buffer);
-
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::fast());
-    encoder.write_all(&buffer)?;
-
+    
+    let blob = create_blob(file)?;
+    encoder.write_all(&blob)?;
     let compressed = encoder.finish()?;
 
     let mut output = fs::File::create(output_path)?;
