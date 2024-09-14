@@ -12,7 +12,7 @@ struct Args {
 #[derive(Subcommand, Debug, Clone)]
 enum Commands {
     Init {
-        #[arg(default_value = ".")]
+        #[arg(default_value = "")]
         path: String
     },
 
@@ -34,12 +34,7 @@ fn init(path: &str) -> Result<()> {
     } else {
         std::env::current_dir()?.join(path)
     };
-
-    let final_path = if full_path == std::env::current_dir()? {
-        std::env::current_dir()?.join(".git")
-    } else {
-        full_path.join(".git")
-    };
+    let final_path = full_path.join(".git");
     
     let reinit = final_path.exists();
     if reinit {
