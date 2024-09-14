@@ -35,8 +35,8 @@ pub fn init(path: &str) -> Result<()> {
     } else {
         std::env::current_dir()?.join(path)
     };
+
     let final_path = full_path.join(".git");
-    
     if final_path.exists() {
         fs::remove_dir_all(&final_path)?;
     }
@@ -55,40 +55,36 @@ pub fn init(path: &str) -> Result<()> {
 }
 
 pub fn cat_file(args: Commands) -> Result<()> {
-    match args {
-        Commands::CatFile { object, .. } => {
-            let data = decompress(&object)?;
-            let content = data.split('\0')
-                .nth(1)
-                .with_context(|| format!("Corrupted object {}", object))?;
-            print!("{}", content);
-        },
-        _ => {}
+    if let Commands::CatFile { object, .. } = args {
+        let data = decompress(&object)?;
+        let content = data.split('\0')
+            .nth(1)
+            .with_context(|| format!("Corrupted object {}", object))?;
+        println!("{}", content);
     }
+
     Ok(())
 }
 
 pub fn hash_object(args: Commands) -> Result<()> {
-    match args {
-        Commands::HashObject { write, file } => {
-            let object = compute_sha1(&file)?;
-            print!("{}", object);
+    if let Commands::HashObject { write, file } = args {
+        let object = compute_sha1(&file)?;
+        println!("{}", object);
 
-            if write {
-                let mut path = format!(
-                    ".git/objects/{}/",
-                    &object[..2],    
-                );
-                let dir = Path::new(&path);
-                if !dir.exists() {
-                    fs::create_dir_all(&path)?;
-                }
-                path.push_str(&object[2..]);
-                compress(&file, &path)?;
+        if write {
+            let mut path = format!(
+                ".git/objects/{}/",
+                &object[..2],    
+            );
+            let dir = Path::new(&path);
+            if !dir.exists() {
+                fs::create_dir_all(&path)?;
             }
-        },
-        _ => {}
+            path.push_str(&object[2..]);
+            compress(&file, &path)?;
+        }
     }
+
     Ok(())
 }
 
@@ -146,12 +142,12 @@ fn create_blob(file_path: &str) -> Result<Vec<u8>> {
 }
 
 fn compute_sha1(file: &str) -> Result<String> {
-    let blob = create_blob(file)?;
-
     let mut hasher = Sha1::new();
+    
+    let blob = create_blob(file)?;
     hasher.update(blob);
-    let result = hasher.finalize();
 
+    let result = hasher.finalize();
     let hex = format!("{:x}", result);
     Ok(hex)
 }
