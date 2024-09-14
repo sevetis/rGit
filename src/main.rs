@@ -16,7 +16,9 @@ fn main() -> Result<()> {
     match args.cmd {
         Commands::Init { path } => commands::init(&path)?,
         Commands::CatFile { .. } => commands::cat_file(args.cmd)?,
+        Commands::HashObject { .. } => commands::hash_object(args.cmd)?,
     }
 
     Ok(())
 }
+
