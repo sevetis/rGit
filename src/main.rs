@@ -17,6 +17,7 @@ fn main() -> Result<()> {
         Commands::Init { path } => commands::init(&path)?,
         Commands::CatFile { .. } => commands::cat_file(args.cmd)?,
         Commands::HashObject { .. } => commands::hash_object(args.cmd)?,
+        Commands::LsTree { .. } => commands::list_tree(args.cmd)?,
     }
 
     Ok(())
