@@ -118,33 +118,35 @@ fn print_tree_obj(data: Vec<u8>, name_only: bool) -> Result<()> {
     }
 
     // skip header
-    let mut idx = 4;
-    while data[idx + 1] != 0 {
-        idx += 1;
-    }
+    let mut idx = data.iter()
+        .position(|&x| x == 0)
+        .unwrap() + 1;
     
     while idx < data.len() {
-        let mut mode = String::new();
-        if data[idx] == b'4' { mode.push('0'); }
-        while data[idx] != b' ' {
-            mode.push(data[idx] as char);
-            idx += 1;
-        }
-        idx += 1;
+        let mode_end = data[idx..].iter()
+            .position(|&x| x == b' ')
+            .unwrap();
+        let mode = String::from_utf8_lossy(&data[idx..idx + mode_end]);
+        idx += mode_end + 1;
 
-        let mut name = String::new();
-        while data[idx] != 0 {
-            name.push(data[idx] as char);
-            idx += 1;
-        }
-        idx += 1;
+        let name_end = data[idx..].iter()
+            .position(|&x| x == 0)
+            .unwrap();
+        let name = String::from_utf8_lossy(&data[idx..idx + name_end]);
+        idx += name_end + 1;
 
         let sha_bytes = &data[idx..idx + B_SHA1_LEN];
         idx += B_SHA1_LEN;
     
-        let obj_type = if mode == "040000" { "tree" } else { "blob" };
+        let obj_type = if mode == "40000" { "tree" } else { "blob" };
         if !name_only {
-            println!("{} {} {}\t{}", mode, obj_type, hex::encode(&sha_bytes), name);
+            println!(
+                "{:0>6} {} {}\t{}",
+                mode,
+                obj_type,
+                hex::encode(&sha_bytes),
+                name
+            );
         } else {
             println!("{}", name);
         }
