@@ -3,11 +3,11 @@ use flate2::write::ZlibEncoder;
 use flate2::Compression;
 use anyhow::{Result, Context};
 use clap::Subcommand;
-use sha1::{Sha1, Digest};
 use std::path::Path;
 use std::io::{Read, Write};
-use hex;
 use std::fs;
+
+use crate::objects::*;
 
 
 #[derive(Subcommand, Debug, Clone)]
@@ -15,6 +15,9 @@ pub enum Commands {
     Init {
         #[arg(default_value = "")]
         path: String
+    },
+    Add {
+        files: Vec<String>  
     },
     CatFile {
         #[arg(long = None, short = 'p', required = true)]
@@ -31,6 +34,7 @@ pub enum Commands {
         name_only: bool,
         object: String,
     },
+    WriteTree,
 }
 
 
@@ -65,14 +69,19 @@ pub fn init(path: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn add(args: Commands) -> Result<()> {
+
+    Ok(())
+}
+
 pub fn cat_file(args: Commands) -> Result<()> {
     if let Commands::CatFile { object, .. } = args {
-        let blob = decompress(&object)?;
-        let data = String::from_utf8(blob)?;
-        let content = data.split('\0')
-            .nth(1)
-            .with_context(|| format!("Corrupted object {}", object))?;
-        println!("{}", content);
+        let obj = decompress(&object)?;
+        if &obj[..4] == b"tree" {
+            print_tree_obj(obj, false)?;
+        } else if &obj[..4] == b"blob" {
+            print_blob_obj(obj)?;
+        }
     }
 
     Ok(())
@@ -109,51 +118,11 @@ pub fn list_tree(args: Commands) -> Result<()> {
     Ok(())
 }
 
-
-
-fn print_tree_obj(data: Vec<u8>, name_only: bool) -> Result<()> {
-    const B_SHA1_LEN: usize = 20;
-    if &data[..4] != b"tree" {
-        return Err(anyhow::anyhow!("Not a tree object"));
-    }
-
-    // skip header
-    let mut idx = data.iter()
-        .position(|&x| x == 0)
-        .unwrap() + 1;
-    
-    while idx < data.len() {
-        let mode_end = data[idx..].iter()
-            .position(|&x| x == b' ')
-            .unwrap();
-        let mode = String::from_utf8_lossy(&data[idx..idx + mode_end]);
-        idx += mode_end + 1;
-
-        let name_end = data[idx..].iter()
-            .position(|&x| x == 0)
-            .unwrap();
-        let name = String::from_utf8_lossy(&data[idx..idx + name_end]);
-        idx += name_end + 1;
-
-        let sha_bytes = &data[idx..idx + B_SHA1_LEN];
-        idx += B_SHA1_LEN;
-    
-        let obj_type = if mode == "40000" { "tree" } else { "blob" };
-        if !name_only {
-            println!(
-                "{:0>6} {} {}\t{}",
-                mode,
-                obj_type,
-                hex::encode(&sha_bytes),
-                name
-            );
-        } else {
-            println!("{}", name);
-        }
-    }
+pub fn write_tree() -> Result<()> {
 
     Ok(())
 }
+
 
 fn decompress(object: &str) -> Result<Vec<u8>> {
     const SHA1_LENGTH: usize = 40;
@@ -190,34 +159,6 @@ fn compress(file: &str, output_path: &str) -> Result<()> {
     let mut output = fs::File::create(output_path)?;
     output.write_all(&compressed)?;
     Ok(())
-}
-
-fn create_blob(file_path: &str) -> Result<Vec<u8>> {
-    let mut file = fs::File::open(file_path)?;
-    let mut content = Vec::new();
-    file.read_to_end(&mut content)?;
-
-    let prefix = format!("blob {}\0", content.len());
-    let prefix_bytes = prefix.as_bytes();
-
-    let mut blob = Vec::with_capacity(
-        prefix_bytes.len() + content.len()
-    );
-
-    blob.extend_from_slice(prefix_bytes);
-    blob.extend(content);
-    Ok(blob)
-}
-
-fn blob_sha1(file: &str) -> Result<String> {
-    let mut hasher = Sha1::new();
-
-    let blob = create_blob(file)?;
-    hasher.update(blob);
-
-    let result = hasher.finalize();
-    let hex_code = format!("{:x}", result);
-    Ok(hex_code)
 }
 
 
