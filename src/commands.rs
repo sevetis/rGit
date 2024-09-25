@@ -76,24 +76,27 @@ pub fn init(args: Commands) -> Result<()> {
             std::env::current_dir()?.join(path)
         };
 
-        let final_path = full_path.join(".git");
-        if final_path.exists() {
-            fs::remove_dir_all(&final_path)?;
-        }
+        let git_dir = full_path.join(".git");
+        let overwrite = git_dir.exists();
+        if overwrite { fs::remove_dir_all(&git_dir)?; }
 
-        fs::create_dir_all(&final_path)?;
-        fs::create_dir(final_path.join("objects"))?;
-        fs::create_dir(final_path.join("refs"))?;
+        fs::create_dir_all(&git_dir)?;
+        fs::create_dir(git_dir.join("objects"))?;
+        fs::create_dir(git_dir.join("refs"))?;
         fs::write(
-            final_path.join("HEAD"),
+            git_dir.join("HEAD"),
             "ref: refs/heads/main\n"
+        )?;
+        fs::write(
+            git_dir.join("description"),
+            "Unnamed repository; edit this file 'description' to name the repository."
         )?;
 
         println!(
             "{} Git repository in {}",
-            if final_path.exists() { "Reinitialized existing" }
+            if overwrite { "Reinitialized existing" }
             else { "Initialized empty" },
-            final_path.display()
+            git_dir.display()
         );
     }
 
