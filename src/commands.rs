@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
@@ -19,6 +21,24 @@ pub enum Commands {
     Add {
         files: Vec<String>  
     },
+    Commit {
+
+    },
+    Status {
+
+    },
+    Log {
+        
+    },
+    Rm {
+
+    },
+    Checkout {
+
+    },
+    CheckIgnore {
+
+    },
     CatFile {
         #[arg(long = None, short = 'p', required = true)]
         pretty_print: bool,
@@ -35,41 +55,82 @@ pub enum Commands {
         object: String,
     },
     WriteTree,
+    RevParse {
+
+    },
+    ShowRef {
+
+    },
+    Tag {
+
+    }
 }
 
 
-pub fn init(path: &str) -> Result<()> {
-    let path = Path::new(path);
-    let full_path = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        std::env::current_dir()?.join(path)
-    };
+pub fn init(args: Commands) -> Result<()> {
+    if let Commands::Init { path } = args {
+        let path = Path::new(&path);
+        let full_path = if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            std::env::current_dir()?.join(path)
+        };
 
-    let final_path = full_path.join(".git");
-    if final_path.exists() {
-        fs::remove_dir_all(&final_path)?;
+        let final_path = full_path.join(".git");
+        if final_path.exists() {
+            fs::remove_dir_all(&final_path)?;
+        }
+
+        fs::create_dir_all(&final_path)?;
+        fs::create_dir(final_path.join("objects"))?;
+        fs::create_dir(final_path.join("refs"))?;
+        fs::write(
+            final_path.join("HEAD"),
+            "ref: refs/heads/main\n"
+        )?;
+
+        println!(
+            "{} Git repository in {}",
+            if final_path.exists() { "Reinitialized existing" }
+            else { "Initialized empty" },
+            final_path.display()
+        );
     }
-
-    fs::create_dir_all(&final_path)?;
-    fs::create_dir(final_path.join("objects"))?;
-    fs::create_dir(final_path.join("refs"))?;
-    fs::write(
-        final_path.join("HEAD"),
-        "ref: refs/heads/main\n"
-    )?;
-
-    println!(
-        "{} Git repository in {}",
-        if final_path.exists() { "Reinitialized existing" }
-        else { "Initialized empty" },
-        final_path.display()
-    );
 
     Ok(())
 }
 
 pub fn add(args: Commands) -> Result<()> {
+
+    Ok(())
+}
+
+pub fn commit(args: Commands) -> Result<()> {
+
+    Ok(())
+}
+
+pub fn status(args: Commands) -> Result<()> {
+
+    Ok(())
+}
+
+pub fn log(args: Commands) -> Result<()> {
+    
+    Ok(())
+}
+
+pub fn rm(args: Commands) -> Result<()> {
+
+    Ok(())
+}
+
+pub fn checkout(args: Commands) -> Result<()> {
+
+    Ok(())
+}
+
+pub fn check_ignore(args: Commands) -> Result<()> {
 
     Ok(())
 }
@@ -118,7 +179,22 @@ pub fn list_tree(args: Commands) -> Result<()> {
     Ok(())
 }
 
-pub fn write_tree() -> Result<()> {
+pub fn write_tree(args: Commands) -> Result<()> {
+
+    Ok(())
+}
+
+pub fn rev_parse(args: Commands) -> Result<()> {
+
+    Ok(())
+}
+
+pub fn show_ref(args: Commands) -> Result<()> {
+
+    Ok(())
+}
+
+pub fn tag(args: Commands) -> Result<()> {
 
     Ok(())
 }

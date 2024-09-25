@@ -234,7 +234,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rGit"
+name = "rgit"
 version = "0.1.0"
 dependencies = [
  "anyhow",
