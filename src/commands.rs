@@ -9,8 +9,8 @@ use std::path::Path;
 use std::io::{Read, Write};
 use std::fs;
 
+use crate::repo::Repo;
 use crate::objects::*;
-
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum Commands {
@@ -42,7 +42,7 @@ pub enum Commands {
     CatFile {
         #[arg(long = None, short = 'p', required = true)]
         pretty_print: bool,
-        object: String,
+        obj_sha: String,
     },
     HashObject {
         #[arg(short = 'w')]
@@ -69,37 +69,9 @@ pub enum Commands {
 
 pub fn init(args: Commands) -> Result<()> {
     if let Commands::Init { path } = args {
-        let path = Path::new(&path);
-        let full_path = if path.is_absolute() {
-            path.to_path_buf()
-        } else {
-            std::env::current_dir()?.join(path)
-        };
-
-        let git_dir = full_path.join(".git");
-        let overwrite = git_dir.exists();
-        if overwrite { fs::remove_dir_all(&git_dir)?; }
-
-        fs::create_dir_all(&git_dir)?;
-        fs::create_dir(git_dir.join("objects"))?;
-        fs::create_dir(git_dir.join("refs"))?;
-        fs::write(
-            git_dir.join("HEAD"),
-            "ref: refs/heads/main\n"
-        )?;
-        fs::write(
-            git_dir.join("description"),
-            "Unnamed repository; edit this file 'description' to name the repository."
-        )?;
-
-        println!(
-            "{} Git repository in {}",
-            if overwrite { "Reinitialized existing" }
-            else { "Initialized empty" },
-            git_dir.display()
-        );
+        let repo = Repo::new(path)?;
+        repo.init()?;
     }
-
     Ok(())
 }
 
@@ -139,8 +111,8 @@ pub fn check_ignore(args: Commands) -> Result<()> {
 }
 
 pub fn cat_file(args: Commands) -> Result<()> {
-    if let Commands::CatFile { object, .. } = args {
-        let obj = decompress(&object)?;
+    if let Commands::CatFile { obj_sha, .. } = args {
+        let obj = decompress(&obj_sha)?;
         if &obj[..4] == b"tree" {
             print_tree_obj(obj, false)?;
         } else if &obj[..4] == b"blob" {
@@ -228,10 +200,10 @@ fn decompress(object: &str) -> Result<Vec<u8>> {
     Ok(decompressed)
 }
 
-fn compress(file: &str, output_path: &str) -> Result<()> {
+fn compress(input_path: &str, output_path: &str) -> Result<()> {
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::fast());
 
-    let blob = create_blob(file)?;
+    let blob = create_blob(input_path)?;
     encoder.write_all(&blob)?;
     let compressed = encoder.finish()?;
 
