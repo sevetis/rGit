@@ -1,13 +1,7 @@
 #![allow(unused_variables)]
 
-use flate2::read::ZlibDecoder;
-use flate2::write::ZlibEncoder;
-use flate2::Compression;
-use anyhow::{Result, Context};
+use anyhow::{Result};
 use clap::Subcommand;
-use std::path::Path;
-use std::io::{Read, Write};
-use std::fs;
 
 use crate::repo::Repo;
 use crate::objects::*;
@@ -50,9 +44,7 @@ pub enum Commands {
         file: String,
     },
     LsTree {
-        #[arg(long = "name-only")]
-        name_only: bool,
-        object: String,
+        obj_sha: String,
     },
     WriteTree,
     RevParse {
@@ -112,45 +104,39 @@ pub fn check_ignore(args: Commands) -> Result<()> {
 
 pub fn cat_file(args: Commands) -> Result<()> {
     if let Commands::CatFile { obj_sha, .. } = args {
-        let obj = decompress(&obj_sha)?;
-        if &obj[..4] == b"tree" {
-            print_tree_obj(obj, false)?;
-        } else if &obj[..4] == b"blob" {
-            print_blob_obj(obj)?;
-        }
+        let obj = Obj::new(obj_sha)?;
+        obj.print()?;
     }
-
     Ok(())
 }
 
 pub fn hash_object(args: Commands) -> Result<()> {
-    if let Commands::HashObject { write, file } = args {
-        let object = blob_sha1(&file)?;
-        println!("{}", object);
+    // if let Commands::HashObject { write, file } = args {
+    //     let object = blob_sha1(&file)?;
+    //     println!("{}", object);
 
-        if write {
-            let mut path = format!(
-                ".git/objects/{}/",
-                &object[..2],    
-            );
-            let dir = Path::new(&path);
-            if !dir.exists() {
-                fs::create_dir_all(&path)?;
-            }
-            path.push_str(&object[2..]);
-            compress(&file, &path)?;
-        }
-    }
+    //     if write {
+    //         let mut path = format!(
+    //             ".git/objects/{}/",
+    //             &object[..2],    
+    //         );
+    //         let dir = Path::new(&path);
+    //         if !dir.exists() {
+    //             fs::create_dir_all(&path)?;
+    //         }
+    //         path.push_str(&object[2..]);
+    //         compress(&file, &path)?;
+    //     }
+    // }
 
     Ok(())
 }
 
 pub fn list_tree(args: Commands) -> Result<()> {
-    if let Commands::LsTree { name_only, object } = args {
-        let data = decompress(&object)?;
-        print_tree_obj(data, name_only)?;
-    }
-
+    // if let Commands::LsTree { obj_sha } = args {
+    //     let obj = Obj::new(obj_sha)?;
+    //     print_tree_obj(&obj.content, name_only)?;
+    // }
     Ok(())
 }
 
@@ -174,42 +160,5 @@ pub fn tag(args: Commands) -> Result<()> {
     Ok(())
 }
 
-
-fn decompress(object: &str) -> Result<Vec<u8>> {
-    const SHA1_LENGTH: usize = 40;
-    if object.len() != SHA1_LENGTH {
-        return Err(anyhow::anyhow!("Invalid object {}", object));
-    }
-
-    let obj_path = format!(
-        ".git/objects/{}/{}",
-        &object[..2],
-        &object[2..]
-    );
-
-    let file = fs::File::open(obj_path)
-        .with_context(|| format!(
-            "Invalid object {}",
-            object
-        ))?;
-
-    let mut decoder = ZlibDecoder::new(file);
-    let mut decompressed = Vec::new();
-    decoder.read_to_end(&mut decompressed)
-        .context("Unable to read")?;
-    Ok(decompressed)
-}
-
-fn compress(input_path: &str, output_path: &str) -> Result<()> {
-    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::fast());
-
-    let blob = create_blob(input_path)?;
-    encoder.write_all(&blob)?;
-    let compressed = encoder.finish()?;
-
-    let mut output = fs::File::create(output_path)?;
-    output.write_all(&compressed)?;
-    Ok(())
-}
 
 
