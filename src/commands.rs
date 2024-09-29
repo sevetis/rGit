@@ -3,7 +3,7 @@
 use anyhow::{Result};
 use clap::Subcommand;
 
-use crate::repo::Repo;
+use crate::repo::*;
 use crate::objects::*;
 
 #[derive(Subcommand, Debug, Clone)]
@@ -104,8 +104,12 @@ pub fn check_ignore(args: Commands) -> Result<()> {
 
 pub fn cat_file(args: Commands) -> Result<()> {
     if let Commands::CatFile { obj_sha, .. } = args {
-        let obj = Obj::from_sha(obj_sha)?;
-        obj.print()?;
+        if let Some(repo) = find_repo(".")? {
+            let obj = repo.get_obj(obj_sha)?;
+            obj.print()?;
+        } else {
+            return Err(anyhow::anyhow!("No rgit repository found!"))
+        }
     }
     Ok(())
 }

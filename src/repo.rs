@@ -1,6 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use anyhow::{Result};
 use std::fs;
+
+use crate::objects::Obj;
 
 pub struct Repo {
     git_dir: PathBuf,
@@ -8,16 +10,9 @@ pub struct Repo {
 
 impl Repo {
     pub fn new(path: String) -> Result<Self> {
-        let path = Path::new(&path);
-        let abs_path = if path.is_absolute() {
-            path.to_path_buf()
-        } else {
-            std::env::current_dir()?.join(path)
-        };
-
-        Ok(Repo {
-            git_dir: abs_path.join(".git"),
-        })
+        let path = fs::canonicalize(&path)?;
+        let git_dir = path.join(".git");
+        Ok(Repo { git_dir })
     }
 
     pub fn init(&self) -> Result<()> {
@@ -49,4 +44,33 @@ impl Repo {
 
         Ok(())
     }
+
+    pub fn get_obj(&self, obj_sha: String) -> Result<Obj> {
+        let obj_path = self.git_dir
+            .join("objects")
+            .join(&obj_sha[..2])
+            .join(&obj_sha[2..]);
+
+        if fs::metadata(&obj_path).is_ok() && obj_path.is_file() {
+            Obj::new(obj_path.to_string_lossy().into_owned())
+        } else {
+            Err(anyhow::anyhow!("Invalid Object"))
+        }
+    }
+}
+
+pub fn find_repo(path: &str) -> Result<Option<Repo>> {
+    let mut cur_dir = fs::canonicalize(&path)?;
+    while let Some(parent_dir) = cur_dir.parent() {
+        let target = cur_dir.join(".git");
+        if fs::metadata(&target).is_ok() && target.is_dir() {
+            return Ok(Some(
+                Repo {
+                    git_dir: target,
+                }
+            ));
+        }
+        cur_dir = parent_dir.to_path_buf();
+    }
+    Ok(None)
 }

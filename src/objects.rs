@@ -33,20 +33,8 @@ pub struct Obj {
 }
 
 impl Obj {
-    pub fn from_sha(obj_sha: String) -> Result<Self> {
-        const SHA1_LENGTH: usize = 40;
-        if obj_sha.len() != SHA1_LENGTH {
-            return Err(anyhow::anyhow!("Invalid object {}", obj_sha));
-        }
-        let obj_path = format!(
-            ".git/objects/{}/{}",
-            &obj_sha[..2],
-            &obj_sha[2..]
-        );
-        Self::load(obj_path)
-    }
 
-    fn load(obj_path: String) -> Result<Self> {
+    pub fn new(obj_path: String) -> Result<Self> {
         let raw_data = decompress(&obj_path)?;
         let obj_t = match raw_data {
             _ if raw_data.starts_with(b"blob") =>   Type::Blob,
@@ -129,7 +117,7 @@ fn decompress(file_path: &str) -> Result<Vec<u8>> {
 }
 
 fn compress(data: &Vec<u8>, output_path: &str) -> Result<()> {
-    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::defualt());
+    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
     encoder.write_all(&data)?;
     let compressed = encoder.finish()?;
     let mut output = fs::File::create(output_path)?;
