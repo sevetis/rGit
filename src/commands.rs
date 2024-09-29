@@ -41,7 +41,7 @@ pub enum Commands {
     HashObject {
         #[arg(short = 'w')]
         write: bool,
-        file: String,
+        path: String,
     },
     LsTree {
         obj_sha: String,
@@ -104,31 +104,18 @@ pub fn check_ignore(args: Commands) -> Result<()> {
 
 pub fn cat_file(args: Commands) -> Result<()> {
     if let Commands::CatFile { obj_sha, .. } = args {
-        let obj = Obj::new(obj_sha)?;
+        let obj = Obj::from_sha(obj_sha)?;
         obj.print()?;
     }
     Ok(())
 }
 
 pub fn hash_object(args: Commands) -> Result<()> {
-    // if let Commands::HashObject { write, file } = args {
-    //     let object = blob_sha1(&file)?;
-    //     println!("{}", object);
-
-    //     if write {
-    //         let mut path = format!(
-    //             ".git/objects/{}/",
-    //             &object[..2],    
-    //         );
-    //         let dir = Path::new(&path);
-    //         if !dir.exists() {
-    //             fs::create_dir_all(&path)?;
-    //         }
-    //         path.push_str(&object[2..]);
-    //         compress(&file, &path)?;
-    //     }
-    // }
-
+    if let Commands::HashObject { write, path } = args {
+        let obj = Obj::new_blob(path)?;
+        let hex_sha = obj.hash(write)?;
+        println!("{}", hex_sha);
+    }
     Ok(())
 }
 
