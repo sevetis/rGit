@@ -1,5 +1,9 @@
-use std::path::{PathBuf};
-use anyhow::{Result};
+use flate2::write::ZlibEncoder;
+use flate2::read::ZlibDecoder;
+use flate2::Compression;
+use anyhow::{Result, Context};
+use std::io::{Read, Write};
+use std::path::PathBuf;
 use std::fs;
 
 use crate::objects::Obj;
@@ -45,32 +49,67 @@ impl Repo {
         Ok(())
     }
 
-    pub fn get_obj(&self, obj_sha: String) -> Result<Obj> {
+    pub fn find_repo(path: &str) -> Result<Option<Self>> {
+        let mut cur_dir = fs::canonicalize(&path)?;
+        while let Some(parent_dir) = cur_dir.parent() {
+            let target = cur_dir.join(".git");
+            if fs::metadata(&target).is_ok() && target.is_dir() {
+                return Ok(Some(
+                    Repo { git_dir: target }
+                ));
+            }
+            cur_dir = parent_dir.to_path_buf();
+        }
+        Ok(None)
+    }
+
+    pub fn get_obj(&self, obj_sha: &str) -> Result<Obj> {
         let obj_path = self.git_dir
             .join("objects")
             .join(&obj_sha[..2])
             .join(&obj_sha[2..]);
 
         if fs::metadata(&obj_path).is_ok() && obj_path.is_file() {
-            Obj::new(obj_path.to_string_lossy().into_owned())
+            let raw_data = decompress(&obj_path.to_string_lossy().to_owned())?;
+            Obj::new(raw_data)
         } else {
             Err(anyhow::anyhow!("Invalid Object"))
         }
     }
+
+    pub fn write_obj(&self, obj_sha: &str, data: &Vec<u8>) -> Result<()> {
+        let mut storing_path = self.git_dir
+            .join("objects").
+            join(&obj_sha[..2]);
+
+        if !storing_path.exists() {
+            fs::create_dir(&storing_path)?;
+        }
+        storing_path = storing_path.join(&obj_sha[2..]);
+        compress(data, &storing_path.to_string_lossy().to_owned())?;
+        Ok(())
+    }
+
 }
 
-pub fn find_repo(path: &str) -> Result<Option<Repo>> {
-    let mut cur_dir = fs::canonicalize(&path)?;
-    while let Some(parent_dir) = cur_dir.parent() {
-        let target = cur_dir.join(".git");
-        if fs::metadata(&target).is_ok() && target.is_dir() {
-            return Ok(Some(
-                Repo {
-                    git_dir: target,
-                }
-            ));
-        }
-        cur_dir = parent_dir.to_path_buf();
-    }
-    Ok(None)
+fn decompress(file_path: &str) -> Result<Vec<u8>> {
+    let file = fs::File::open(file_path)
+        .with_context(|| format!(
+            "Open file failed",
+        ))?;
+
+    let mut decoder = ZlibDecoder::new(file);
+    let mut decompressed = Vec::new();
+    decoder.read_to_end(&mut decompressed)?;
+    Ok(decompressed)
 }
+
+fn compress(data: &Vec<u8>, output_path: &str) -> Result<()> {
+    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(&data)?;
+    let compressed = encoder.finish()?;
+    let mut output = fs::File::create(output_path)?;
+    output.write_all(&compressed)?;
+    Ok(())
+}
+

@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
 
-use anyhow::{Result};
+use anyhow::Result;
 use clap::Subcommand;
 
 use crate::repo::*;
@@ -9,8 +9,8 @@ use crate::objects::*;
 #[derive(Subcommand, Debug, Clone)]
 pub enum Commands {
     Init {
-        #[arg(default_value = "")]
-        path: String
+        #[arg(default_value = ".")]
+        repo_path: String
     },
     Add {
         files: Vec<String>  
@@ -39,9 +39,9 @@ pub enum Commands {
         obj_sha: String,
     },
     HashObject {
+        file_path: String,
         #[arg(short = 'w')]
         write: bool,
-        path: String,
     },
     LsTree {
         obj_sha: String,
@@ -60,95 +60,87 @@ pub enum Commands {
 
 
 pub fn init(args: Commands) -> Result<()> {
-    if let Commands::Init { path } = args {
-        let repo = Repo::new(path)?;
+    if let Commands::Init { repo_path } = args {
+        let repo = Repo::new(repo_path)?;
         repo.init()?;
     }
     Ok(())
 }
 
 pub fn add(args: Commands) -> Result<()> {
-
-    Ok(())
+    todo!();
 }
 
 pub fn commit(args: Commands) -> Result<()> {
-
-    Ok(())
+    todo!();
 }
 
 pub fn status(args: Commands) -> Result<()> {
-
-    Ok(())
+    todo!();
 }
 
 pub fn log(args: Commands) -> Result<()> {
-    
-    Ok(())
+    todo!();
 }
 
 pub fn rm(args: Commands) -> Result<()> {
-
-    Ok(())
+    todo!();
 }
 
 pub fn checkout(args: Commands) -> Result<()> {
-
-    Ok(())
+    todo!();
 }
 
 pub fn check_ignore(args: Commands) -> Result<()> {
-
-    Ok(())
+    todo!();
 }
 
 pub fn cat_file(args: Commands) -> Result<()> {
     if let Commands::CatFile { obj_sha, .. } = args {
-        if let Some(repo) = find_repo(".")? {
-            let obj = repo.get_obj(obj_sha)?;
+        if let Some(repo) = Repo::find_repo(".")? {
+            let obj = repo.get_obj(&obj_sha)?;
             obj.print()?;
         } else {
-            return Err(anyhow::anyhow!("No rgit repository found!"))
+            return Err(anyhow::anyhow!("No rgit repository found!"));
         }
     }
     Ok(())
 }
 
 pub fn hash_object(args: Commands) -> Result<()> {
-    if let Commands::HashObject { write, path } = args {
-        let obj = Obj::new_blob(path)?;
-        let hex_sha = obj.hash(write)?;
+    if let Commands::HashObject { file_path, write } = args {
+        let obj = Obj::new_blob(file_path)?;
+        let (hex_sha, hashed) = obj.hash()?;
+        if write {
+            if let Some(repo) = Repo::find_repo(".")? {
+                repo.write_obj(&hex_sha, &hashed)?;
+            } else {
+                return Err(anyhow::anyhow!("No rgit repository found!"));
+            }
+        }
         println!("{}", hex_sha);
     }
     Ok(())
 }
 
 pub fn list_tree(args: Commands) -> Result<()> {
-    // if let Commands::LsTree { obj_sha } = args {
-    //     let obj = Obj::new(obj_sha)?;
-    //     print_tree_obj(&obj.content, name_only)?;
-    // }
-    Ok(())
+    cat_file(args)
 }
 
 pub fn write_tree(args: Commands) -> Result<()> {
-
-    Ok(())
+    todo!();
 }
 
 pub fn rev_parse(args: Commands) -> Result<()> {
-
-    Ok(())
+    todo!();
 }
 
 pub fn show_ref(args: Commands) -> Result<()> {
-
-    Ok(())
+    todo!();
 }
 
 pub fn tag(args: Commands) -> Result<()> {
-
-    Ok(())
+    todo!();
 }
 
 

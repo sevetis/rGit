@@ -1,10 +1,7 @@
 #![allow(unused_imports)]
-use flate2::read::ZlibDecoder;
-use flate2::write::ZlibEncoder;
 use flate2::Compression;
 use anyhow::{Result, Context};
 use sha1::{Sha1, Digest};
-use std::io::{Read, Write};
 use std::path::Path;
 use std::fs;
 use hex;
@@ -33,10 +30,8 @@ pub struct Obj {
 }
 
 impl Obj {
-
-    pub fn new(obj_path: String) -> Result<Self> {
-        let raw_data = decompress(&obj_path)?;
-        let obj_t = match raw_data {
+    pub fn new(raw_data: Vec<u8>) -> Result<Self> {
+        let obj_type = match raw_data {
             _ if raw_data.starts_with(b"blob") =>   Type::Blob,
             _ if raw_data.starts_with(b"tree") =>   Type::Tree,
             _ if raw_data.starts_with(b"commit") => Type::Commit,
@@ -46,7 +41,7 @@ impl Obj {
 
         if let Some(idx) = raw_data.iter().position(|&x| x == 0) {
             Ok(Self {
-                obj_type: obj_t,
+                obj_type,
                 content: raw_data[idx + 1..].to_vec(),
             })
         } else {
@@ -61,69 +56,33 @@ impl Obj {
         })
     }
 
+    pub fn hash(&self) -> Result<(String, Vec<u8>)> {
+        let header = format!("{} {}\0", &self.obj_type, &self.content.len());
+        let mut result = Vec::with_capacity(header.len() + self.content.len());
+        result.extend_from_slice(header.as_bytes());
+        result.extend_from_slice(&self.content);
+
+        let hex_sha = {
+            let mut hasher = Sha1::new();
+            hasher.update(&result);
+            format!("{:x}", hasher.finalize())
+        };
+
+        Ok((hex_sha, result))
+    }
+
     pub fn print(&self) -> Result<()> {
         match self.obj_type {
             Type::Blob => print_blob_obj(&self.content)?,
             Type::Tree => print_tree_obj(&self.content)?,
-            _ => panic!("Unimplemented!"),
+            _ => todo!(),
         };
 
         Ok(())
     }
 
-    pub fn hash(&self, write: bool) -> Result<String> {
-        let header = format!(
-            "{} {}\0",
-            &self.obj_type,
-            &self.content.len()
-        );
-        let header = header.as_bytes();
-
-        let mut result = Vec::with_capacity(
-            &header.len() + &self.content.len()
-        );
-        result.extend_from_slice(header);
-        result.extend(self.content.clone());
-
-        let mut hasher = Sha1::new();
-        hasher.update(result.clone());
-        let hex_sha = format!("{:x}", hasher.finalize());
-
-        if write {
-            let mut path = format!(".git/objects/{}/", &hex_sha[..2]);
-            let dir = Path::new(&path);
-            if !dir.exists() {
-                fs::create_dir_all(&path)?;
-            }
-            path.push_str(&hex_sha[2..]);
-            compress(&result, &path)?;
-        }
-
-        Ok(hex_sha)
-    }
-
 }
 
-fn decompress(file_path: &str) -> Result<Vec<u8>> {
-    let file = fs::File::open(file_path)
-        .with_context(|| format!(
-            "Open file failed",
-        ))?;
-
-    let mut decoder = ZlibDecoder::new(file);
-    let mut decompressed = Vec::new();
-    decoder.read_to_end(&mut decompressed)?;
-    Ok(decompressed)
-}
-
-fn compress(data: &Vec<u8>, output_path: &str) -> Result<()> {
-    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
-    encoder.write_all(&data)?;
-    let compressed = encoder.finish()?;
-    let mut output = fs::File::create(output_path)?;
-    output.write_all(&compressed)?;
-    Ok(())
-}
 
 fn print_blob_obj(content: &Vec<u8>) -> Result<()> {
     print!("{}", String::from_utf8(content.clone())?);
