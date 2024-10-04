@@ -1,7 +1,7 @@
 #![allow(unused_variables)]
 
 use anyhow::Result;
-use clap::Subcommand;
+use clap::{Subcommand, ArgGroup};
 
 use crate::repo::*;
 use crate::objects::*;
@@ -33,10 +33,20 @@ pub enum Commands {
     CheckIgnore {
 
     },
+    #[command(group(
+        ArgGroup::new("flags")
+            .required(true)
+            .args(&["pretty_print", "obj_type", "obj_size"])
+            .multiple(false)
+    ))]
     CatFile {
-        #[arg(long = None, short = 'p', required = true)]
-        pretty_print: bool,
         obj_sha: String,
+        #[arg(long = None, short = 'p')]
+        pretty_print: bool,
+        #[arg(long = None, short = 't')]
+        obj_type: bool,
+        #[arg(long = None, short = 's')]
+        obj_size: bool,
     },
     HashObject {
         file_path: String,
@@ -96,10 +106,12 @@ pub fn check_ignore(args: Commands) -> Result<()> {
 }
 
 pub fn cat_file(args: Commands) -> Result<()> {
-    if let Commands::CatFile { obj_sha, .. } = args {
+    if let Commands::CatFile { obj_sha, pretty_print, obj_size, obj_type } = args {
         if let Some(repo) = Repo::find_repo(".")? {
             let obj = repo.get_obj(&obj_sha)?;
-            obj.print()?;
+            if pretty_print { obj.print()?; }
+            else if obj_size { println!("{}", obj.size()?); }
+            else if obj_type { println!("{}", obj.obj_type()?); }
         } else {
             return Err(anyhow::anyhow!("No rgit repository found!"));
         }

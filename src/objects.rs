@@ -82,6 +82,14 @@ impl Obj {
         Ok(())
     }
 
+    pub fn size(&self) -> Result<usize> {
+        Ok(self.content.len())
+    }
+
+    pub fn obj_type(&self) -> Result<String> {
+        Ok(format!("{}", self.obj_type))
+    }
+
 }
 
 
