@@ -75,6 +75,7 @@ impl Obj {
         match self.obj_type {
             Type::Blob => print_blob_obj(&self.content)?,
             Type::Tree => print_tree_obj(&self.content)?,
+            Type::Commit => print_commit_obj(&self.content)?,
             _ => todo!(),
         };
 
@@ -84,8 +85,8 @@ impl Obj {
 }
 
 
-fn print_blob_obj(content: &Vec<u8>) -> Result<()> {
-    print!("{}", String::from_utf8(content.clone())?);
+fn print_blob_obj(data: &Vec<u8>) -> Result<()> {
+    print!("{}", std::str::from_utf8(data)?);
     Ok(())
 }
 
@@ -123,3 +124,10 @@ fn print_tree_obj(data: &Vec<u8>) -> Result<()> {
 
     Ok(())
 }
+
+
+fn print_commit_obj(data: &Vec<u8>) -> Result<()> {
+    print!("{}", std::str::from_utf8(data)?);
+    Ok(())
+}
+
