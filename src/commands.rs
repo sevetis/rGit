@@ -90,7 +90,17 @@ pub fn status(args: Commands) -> Result<()> {
 }
 
 pub fn log(args: Commands) -> Result<()> {
-    todo!();
+    if let Commands::Log{} = args {
+        let repo = Repo::find_repo()?;
+        let mut cur_commit = repo.get_obj(&repo.head_ref()?)?;
+        cur_commit.print()?;
+        while let Some(parent) = cur_commit.parent()? {
+            cur_commit = repo.get_obj(&parent)?;
+            println!("--------------------------------------------------");
+            cur_commit.print()?;
+        }
+    }
+    Ok(())
 }
 
 pub fn rm(args: Commands) -> Result<()> {
@@ -106,29 +116,27 @@ pub fn check_ignore(args: Commands) -> Result<()> {
 }
 
 pub fn cat_file(args: Commands) -> Result<()> {
-    if let Commands::CatFile { obj_sha, pretty_print, obj_size, obj_type } = args {
-        if let Some(repo) = Repo::find_repo(".")? {
-            let obj = repo.get_obj(&obj_sha)?;
-            if pretty_print { obj.print()?; }
-            else if obj_size { println!("{}", obj.size()?); }
-            else if obj_type { println!("{}", obj.obj_type()?); }
-        } else {
-            return Err(anyhow::anyhow!("No rgit repository found!"));
+    if let Commands::CatFile{ obj_sha, pretty_print, obj_size, obj_type } = args {
+        let repo = Repo::find_repo()?;
+        let obj = repo.get_obj(&obj_sha)?;
+        if pretty_print {
+            obj.print()?; 
+        } else if obj_size {
+            println!("{}", obj.size()?);
+        } else if obj_type {
+            println!("{}", obj.obj_type()?);
         }
     }
     Ok(())
 }
 
 pub fn hash_object(args: Commands) -> Result<()> {
-    if let Commands::HashObject { file_path, write } = args {
+    if let Commands::HashObject{ file_path, write } = args {
         let obj = Obj::new_blob(file_path)?;
         let (hex_sha, hashed) = obj.hash()?;
         if write {
-            if let Some(repo) = Repo::find_repo(".")? {
-                repo.write_obj(&hex_sha, &hashed)?;
-            } else {
-                return Err(anyhow::anyhow!("No rgit repository found!"));
-            }
+            let repo = Repo::find_repo()?;
+            repo.write_obj(&hex_sha, &hashed)?;
         }
         println!("{}", hex_sha);
     }

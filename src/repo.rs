@@ -49,18 +49,16 @@ impl Repo {
         Ok(())
     }
 
-    pub fn find_repo(path: &str) -> Result<Option<Self>> {
-        let mut cur_dir = fs::canonicalize(&path)?;
+    pub fn find_repo() -> Result<Self> {
+        let mut cur_dir = fs::canonicalize(".")?;
         while let Some(parent_dir) = cur_dir.parent() {
             let target = cur_dir.join(".git");
             if fs::metadata(&target).is_ok() && target.is_dir() {
-                return Ok(Some(
-                    Repo { git_dir: target }
-                ));
+                return Ok(Repo { git_dir: target });
             }
             cur_dir = parent_dir.to_path_buf();
         }
-        Ok(None)
+        Err(anyhow::anyhow!("no rgit repository found"))
     }
 
     pub fn get_obj(&self, obj_sha: &str) -> Result<Obj> {
@@ -73,7 +71,7 @@ impl Repo {
             let raw_data = decompress(&obj_path.to_string_lossy().to_owned())?;
             Obj::new(raw_data)
         } else {
-            Err(anyhow::anyhow!("Invalid Object"))
+            Err(anyhow::anyhow!("invalid object"))
         }
     }
 
@@ -88,6 +86,16 @@ impl Repo {
         storing_path = storing_path.join(&obj_sha[2..]);
         compress(data, &storing_path.to_string_lossy().to_owned())?;
         Ok(())
+    }
+
+    pub fn head_ref(&self) -> Result<String> {
+        let head = fs::read_to_string(self.git_dir.join("HEAD"))?;
+        let ref_path = self.git_dir.join(&head[5..].trim_end());
+        if ref_path.exists() {
+            Ok(fs::read_to_string(ref_path)?.trim_end().to_string())
+        } else {
+            Err(anyhow::anyhow!("current branch does not have any commits yet"))
+        }
     }
 
 }

@@ -90,6 +90,22 @@ impl Obj {
         Ok(format!("{}", self.obj_type))
     }
 
+    // only for commit
+    pub fn parent(&self) -> Result<Option<String>> {
+        if let Type::Commit = self.obj_type {
+            let content = std::str::from_utf8(&self.content)?;
+            let lines: Vec<&str> = content.split("\n").collect();
+            if lines[1].starts_with("parent") {
+                let parent_sha = lines[1][7..].to_owned();
+                Ok(Some(parent_sha))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Err(anyhow::anyhow!("invalid use of function"))
+        }
+    }
+
 }
 
 
@@ -133,9 +149,9 @@ fn print_tree_obj(data: &Vec<u8>) -> Result<()> {
     Ok(())
 }
 
-
 fn print_commit_obj(data: &Vec<u8>) -> Result<()> {
     print!("{}", std::str::from_utf8(data)?);
     Ok(())
 }
+
 
