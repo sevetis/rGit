@@ -61,33 +61,29 @@ impl Obj {
         let mut result = Vec::with_capacity(header.len() + self.content.len());
         result.extend_from_slice(header.as_bytes());
         result.extend_from_slice(&self.content);
-
         let hex_sha = {
             let mut hasher = Sha1::new();
             hasher.update(&result);
             format!("{:x}", hasher.finalize())
         };
-
         Ok((hex_sha, result))
     }
 
-    pub fn print(&self) -> Result<()> {
+    pub fn to_string(&self) -> Result<String> {
         match self.obj_type {
-            Type::Blob => print_blob_obj(&self.content)?,
-            Type::Tree => print_tree_obj(&self.content)?,
-            Type::Commit => print_commit_obj(&self.content)?,
+            Type::Blob |
+            Type::Commit => Ok(String::from_utf8_lossy(&self.content).into_owned()),
+            Type::Tree =>   tree_to_string(&self.content),
             _ => todo!(),
-        };
-
-        Ok(())
+        }
     }
 
-    pub fn size(&self) -> Result<usize> {
-        Ok(self.content.len())
+    pub fn size(&self) -> usize {
+        self.content.len()
     }
 
-    pub fn obj_type(&self) -> Result<String> {
-        Ok(format!("{}", self.obj_type))
+    pub fn obj_type(&self) -> String {
+        format!("{}", self.obj_type)
     }
 
     // only for commit
@@ -102,56 +98,41 @@ impl Obj {
                 Ok(None)
             }
         } else {
-            Err(anyhow::anyhow!("invalid use of function"))
+            Err(anyhow::anyhow!("invalid call"))
         }
     }
 
 }
 
-
-fn print_blob_obj(data: &Vec<u8>) -> Result<()> {
-    print!("{}", std::str::from_utf8(data)?);
-    Ok(())
-}
-
-fn print_tree_obj(data: &Vec<u8>) -> Result<()> {
+fn tree_to_string(data: &Vec<u8>) -> Result<String> {
     const B_SHA1_LEN: usize = 20;
+    let cut = |data: &Vec<u8>, st: &mut usize, del: u8| -> Result<String> {
+        let ed = data[(*st)..].iter()
+            .position(|&x| x == del)
+            .unwrap();
+        let ret = String::from_utf8(data[*st..*st + ed].to_vec())?;
+        *st += ed + 1;
+        Ok(ret)
+    };
 
     let mut idx = 0;
+    let mut ret = String::new();
     while idx < data.len() {
-        let mode_end = data[idx..].iter()
-            .position(|&x| x == b' ')
-            .unwrap();
-        let mode = String::from_utf8_lossy(&data[idx..idx + mode_end]);
-        idx += mode_end + 1;
-
-        let name_end = data[idx..].iter()
-            .position(|&x| x == 0)
-            .unwrap();
-        let name = String::from_utf8_lossy(&data[idx..idx + name_end]);
-        idx += name_end + 1;
-
-        let sha_bytes = &data[idx..idx + B_SHA1_LEN];
-        idx += B_SHA1_LEN;
-    
+        let mode = cut(data, &mut idx, b' ')?;
+        let name = cut(data, &mut idx, 0)?;
+        let hex_ = hex::encode(&data[idx..idx + B_SHA1_LEN]);
         let obj_type = if mode == "40000" { "tree" } else { "blob" };
-
-        println!(
-            "{:0>6} {} {}\t{}",
-            mode,
-            obj_type,
-            hex::encode(&sha_bytes),
-            name
+        
+        idx += B_SHA1_LEN;
+        ret = format!(
+            "{}{:0>6} {} {}\t{}\n",
+            ret, mode, obj_type, hex_, name
         );
-
     }
 
-    Ok(())
+    ret.pop();
+    Ok(ret)
 }
 
-fn print_commit_obj(data: &Vec<u8>) -> Result<()> {
-    print!("{}", std::str::from_utf8(data)?);
-    Ok(())
-}
 
 

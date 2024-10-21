@@ -93,11 +93,11 @@ pub fn log(args: Commands) -> Result<()> {
     if let Commands::Log{} = args {
         let repo = Repo::find_repo()?;
         let mut cur_commit = repo.get_obj(&repo.head_ref()?)?;
-        cur_commit.print()?;
+        print!("{}", cur_commit.to_string()?);
         while let Some(parent) = cur_commit.parent()? {
             cur_commit = repo.get_obj(&parent)?;
             println!("--------------------------------------------------");
-            cur_commit.print()?;
+            print!("{}", cur_commit.to_string()?);
         }
     }
     Ok(())
@@ -119,13 +119,16 @@ pub fn cat_file(args: Commands) -> Result<()> {
     if let Commands::CatFile{ obj_sha, pretty_print, obj_size, obj_type } = args {
         let repo = Repo::find_repo()?;
         let obj = repo.get_obj(&obj_sha)?;
-        if pretty_print {
-            obj.print()?; 
+        let to_print = if pretty_print {
+            obj.to_string()?
         } else if obj_size {
-            println!("{}", obj.size()?);
+            format!("{}", obj.size())
         } else if obj_type {
-            println!("{}", obj.obj_type()?);
-        }
+            obj.obj_type()
+        } else {
+            "".to_owned()
+        };
+        println!("{}", to_print);
     }
     Ok(())
 }
