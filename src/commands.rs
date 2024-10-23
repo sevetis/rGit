@@ -54,7 +54,7 @@ pub enum Commands {
         write: bool,
     },
     LsTree {
-        obj_sha: String,
+        tree_sha: String,
     },
     WriteTree,
     RevParse {
@@ -123,10 +123,8 @@ pub fn cat_file(args: Commands) -> Result<()> {
             obj.to_string()?
         } else if obj_size {
             format!("{}", obj.size())
-        } else if obj_type {
-            obj.obj_type()
         } else {
-            "".to_owned()
+            format!("{}", obj.obj_type())
         };
         println!("{}", to_print);
     }

@@ -6,6 +6,7 @@ use std::path::Path;
 use std::fs;
 use hex;
 
+#[derive(Copy, Clone)]
 pub enum Type {
     Blob,
     Tree,
@@ -82,8 +83,8 @@ impl Obj {
         self.content.len()
     }
 
-    pub fn obj_type(&self) -> String {
-        format!("{}", self.obj_type)
+    pub fn obj_type(&self) -> Type {
+        self.obj_type
     }
 
     // only for commit
