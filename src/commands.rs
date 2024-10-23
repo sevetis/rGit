@@ -145,7 +145,15 @@ pub fn hash_object(args: Commands) -> Result<()> {
 }
 
 pub fn list_tree(args: Commands) -> Result<()> {
-    cat_file(args)
+    if let Commands::LsTree{ tree_sha } = args {
+        let repo = Repo::find_repo()?;
+        let tree = repo.get_obj(&tree_sha)?;
+        if tree.obj_type() != Type::Tree {
+            return Err(anyhow::anyhow!("not a tree object"));
+        }
+        println!("{}", tree.to_string()?);
+    }
+    Ok(())
 }
 
 pub fn write_tree(args: Commands) -> Result<()> {

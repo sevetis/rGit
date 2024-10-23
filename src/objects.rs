@@ -6,7 +6,7 @@ use std::path::Path;
 use std::fs;
 use hex;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Type {
     Blob,
     Tree,
