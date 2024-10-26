@@ -62,17 +62,30 @@ impl Repo {
     }
 
     pub fn get_obj(&self, obj_sha: &str) -> Result<Obj> {
-        let obj_path = self.git_dir
-            .join("objects")
-            .join(&obj_sha[..2])
-            .join(&obj_sha[2..]);
-
-        if fs::metadata(&obj_path).is_ok() && obj_path.is_file() {
-            let raw_data = decompress(&obj_path.to_string_lossy().to_owned())?;
-            Obj::new(raw_data)
-        } else {
-            Err(anyhow::anyhow!("invalid object"))
+        if obj_sha.len() == 40 {
+            let obj_path = self.git_dir
+                .join("objects")
+                .join(&obj_sha[..2])
+                .join(&obj_sha[2..]);
+            if fs::metadata(&obj_path).is_ok() && obj_path.is_file() {
+                let raw_data = decompress(&obj_path.to_string_lossy().to_owned())?;
+                return Obj::new(raw_data);
+            }
+        } else if obj_sha.len() >= 4 {
+            let mut obj_path = self.git_dir
+                .join("objects")
+                .join(&obj_sha[..2]);
+            let prefix = &obj_sha[2..];
+            for entry in fs::read_dir(&obj_path)? {
+                let filename = entry?.file_name();
+                if filename.to_string_lossy().starts_with(&prefix) {
+                    obj_path = obj_path.join(filename);
+                    let raw_data = decompress(&obj_path.to_string_lossy())?;
+                    return Obj::new(raw_data);
+                }
+            }
         }
+        Err(anyhow::anyhow!("invalid object"))
     }
 
     pub fn write_obj(&self, obj_sha: &str, data: &Vec<u8>) -> Result<()> {
