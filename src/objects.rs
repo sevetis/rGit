@@ -122,7 +122,13 @@ fn tree_to_string(data: &Vec<u8>) -> Result<String> {
         let mode = cut(data, &mut idx, b' ')?;
         let name = cut(data, &mut idx, 0)?;
         let hex_ = hex::encode(&data[idx..idx + B_SHA1_LEN]);
-        let obj_type = if mode == "40000" { "tree" } else { "blob" };
+        let obj_type = match mode {
+            _ if mode.starts_with("40") => "tree",
+            _ if mode.starts_with("10") => "blob",
+            _ if mode.starts_with("12") => "blob",
+            _ if mode.starts_with("16") => "commit",
+            _ => return Err(anyhow::anyhow!("unknown tree leaf mode"))
+        };
         
         idx += B_SHA1_LEN;
         ret = format!(
