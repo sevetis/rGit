@@ -102,13 +102,21 @@ impl Repo {
     }
 
     pub fn head_ref(&self) -> Result<String> {
-        let head = fs::read_to_string(self.git_dir.join("HEAD"))?;
-        let ref_path = self.git_dir.join(&head[5..].trim_end());
-        if ref_path.exists() {
-            Ok(fs::read_to_string(ref_path)?.trim_end().to_string())
-        } else {
-            Err(anyhow::anyhow!("current branch does not have any commits yet"))
+        Ok(self.get_ref(self.git_dir.join("HEAD"))?.unwrap())
+    }
+
+    fn get_ref(&self, ref_path: PathBuf) -> Result<Option<String>> {
+        if ref_path.is_file() {
+            let data = fs::read(ref_path)?;
+            if data.starts_with(&b"ref:".to_vec()[..]) {
+                return self.get_ref(
+                    self.git_dir.join(std::str::from_utf8(&data[5..])?.trim_end())
+                )
+            } else {
+                return Ok(Some(String::from_utf8(data)?.trim_end().to_string()));
+            }
         }
+        Ok(None)
     }
 
 }
