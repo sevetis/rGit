@@ -102,21 +102,41 @@ impl Repo {
     }
 
     pub fn head_ref(&self) -> Result<String> {
-        Ok(self.get_ref(self.git_dir.join("HEAD"))?.unwrap())
+        Ok(self.get_ref("HEAD".into())?.unwrap())
     }
 
-    fn get_ref(&self, ref_path: PathBuf) -> Result<Option<String>> {
+    pub fn get_ref(&self, ref_path: String) -> Result<Option<String>> {
+        let ref_path = self.git_dir.join(ref_path);
         if ref_path.is_file() {
             let data = fs::read(ref_path)?;
             if data.starts_with(&b"ref:".to_vec()[..]) {
                 return self.get_ref(
-                    self.git_dir.join(std::str::from_utf8(&data[5..])?.trim_end())
+                    std::str::from_utf8(&data[5..])?.trim_end().to_string()
                 )
             } else {
                 return Ok(Some(String::from_utf8(data)?.trim_end().to_string()));
             }
         }
         Ok(None)
+    }
+
+    pub fn all_refs(&self) -> Result<Vec<String>> {
+        let contents = self.all_refs_(self.git_dir.join("refs"))?;
+        Ok(contents)
+    }
+
+    fn all_refs_(&self, dir: PathBuf) -> Result<Vec<String>> {
+        let mut contents = vec![];
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let file_t = entry.file_type()?;
+            if file_t.is_dir() {
+                contents.extend((self.all_refs_(entry.path()))?);
+            } else if file_t.is_file() {
+                contents.push(entry.path().strip_prefix(&self.git_dir)?.to_string_lossy().into_owned());
+            }
+        }
+        Ok(contents)
     }
 
 }
@@ -141,4 +161,5 @@ fn compress(data: &Vec<u8>, output_path: &str) -> Result<()> {
     output.write_all(&compressed)?;
     Ok(())
 }
+
 

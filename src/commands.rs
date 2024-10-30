@@ -61,7 +61,8 @@ pub enum Commands {
 
     },
     ShowRef {
-
+        #[arg(long = None, short = 's')]
+        hash: bool,
     },
     Tag {
 
@@ -165,7 +166,19 @@ pub fn rev_parse(args: Commands) -> Result<()> {
 }
 
 pub fn show_ref(args: Commands) -> Result<()> {
-    todo!();
+    if let Commands::ShowRef { hash } = args {
+        let repo = Repo::find_repo()?;
+        for ref_path in repo.all_refs()?.iter() {
+            if let Some(sha) = repo.get_ref((*ref_path).clone())? {
+                if hash {
+                    println!("{}", sha);
+                } else {
+                    println!("{} {}", sha, ref_path);
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 pub fn tag(args: Commands) -> Result<()> {
