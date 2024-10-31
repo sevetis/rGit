@@ -135,10 +135,10 @@ pub fn cat_file(args: Commands) -> Result<()> {
 pub fn hash_object(args: Commands) -> Result<()> {
     if let Commands::HashObject{ file_path, write } = args {
         let obj = Obj::new_blob(file_path)?;
-        let (hex_sha, hashed) = obj.hash()?;
+        let (hex_sha, content) = obj.hash()?;
         if write {
             let repo = Repo::find_repo()?;
-            repo.write_obj(&hex_sha, &hashed)?;
+            repo.write_obj(&hex_sha, &content)?;
         }
         println!("{}", hex_sha);
     }

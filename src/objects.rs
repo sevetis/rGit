@@ -59,15 +59,15 @@ impl Obj {
 
     pub fn hash(&self) -> Result<(String, Vec<u8>)> {
         let header = format!("{} {}\0", &self.obj_type, &self.content.len());
-        let mut result = Vec::with_capacity(header.len() + self.content.len());
-        result.extend_from_slice(header.as_bytes());
-        result.extend_from_slice(&self.content);
+        let mut content = Vec::with_capacity(header.len() + self.content.len());
+        content.extend_from_slice(header.as_bytes());
+        content.extend_from_slice(&self.content);
         let hex_sha = {
             let mut hasher = Sha1::new();
-            hasher.update(&result);
+            hasher.update(&content);
             format!("{:x}", hasher.finalize())
         };
-        Ok((hex_sha, result))
+        Ok((hex_sha, content))
     }
 
     pub fn to_string(&self) -> Result<String> {
