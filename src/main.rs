@@ -1,6 +1,8 @@
 use clap::Parser;
 use anyhow::Result;
 
+pub mod obj;
+
 mod repo;
 mod objects;
 mod commands;
