@@ -13,12 +13,14 @@ pub struct Repo {
 }
 
 impl Repo {
+    /// Create a new repo struct
     pub fn new(path: String) -> Result<Self> {
         let path = fs::canonicalize(&path)?;
         let git_dir = path.join(".git");
         Ok(Repo { git_dir })
     }
 
+    /// Init or reinit a repo
     pub fn init(&self) -> Result<()> {
         let is_overwrite = self.git_dir.exists();
         if is_overwrite {
@@ -49,6 +51,7 @@ impl Repo {
         Ok(())
     }
 
+    /// Recursively find a repo from present working dir
     pub fn find_repo() -> Result<Self> {
         let mut cur_dir = fs::canonicalize(".")?;
         while let Some(parent_dir) = cur_dir.parent() {
@@ -61,6 +64,7 @@ impl Repo {
         Err(anyhow::anyhow!("no rgit repository found"))
     }
 
+    /// Get a object with given obj hash code 
     pub fn get_obj(&self, obj_sha: &str) -> Result<Box<dyn Obj>> {
         if obj_sha.len() == 40 {
             let obj_path = self.git_dir
@@ -88,6 +92,7 @@ impl Repo {
         Err(anyhow::anyhow!("invalid object"))
     }
 
+    /// Create a object with given hash code and data in current repo
     pub fn write_obj(&self, obj_sha: &str, data: &Vec<u8>) -> Result<()> {
         let mut storing_path = self.git_dir
             .join("objects").
@@ -101,10 +106,12 @@ impl Repo {
         Ok(())
     }
 
+    /// Get the head reference of current branch
     pub fn head_ref(&self) -> Result<String> {
         Ok(self.get_ref("HEAD".into())?.unwrap())
     }
 
+    /// Get the hash code of final ref found from given ref_path
     pub fn get_ref(&self, ref_path: String) -> Result<Option<String>> {
         let ref_path = self.git_dir.join(ref_path);
         if ref_path.is_file() {
@@ -120,12 +127,14 @@ impl Repo {
         Ok(None)
     }
 
+    /// Get all references
     pub fn all_refs(&self) -> Result<Vec<String>> {
         Ok(self.all_refs_(
             self.git_dir.join("refs")
         )?)
     }
 
+    /// helper function of `all_refs`
     fn all_refs_(&self, dir: PathBuf) -> Result<Vec<String>> {
         let mut contents = vec![];
         for entry in fs::read_dir(dir)? {
@@ -142,6 +151,7 @@ impl Repo {
 
 }
 
+/// Decompress a file
 fn decompress(file_path: &str) -> Result<Vec<u8>> {
     let file = fs::File::open(file_path)
         .with_context(|| format!(
@@ -154,6 +164,7 @@ fn decompress(file_path: &str) -> Result<Vec<u8>> {
     Ok(decompressed)
 }
 
+/// Compress data to the given path
 fn compress(data: &Vec<u8>, output_path: &str) -> Result<()> {
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
     encoder.write_all(&data)?;
