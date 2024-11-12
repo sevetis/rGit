@@ -6,7 +6,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::fs;
 
-use crate::objects::Obj;
+use crate::obj::*;
 
 pub struct Repo {
     git_dir: PathBuf,
@@ -61,7 +61,7 @@ impl Repo {
         Err(anyhow::anyhow!("no rgit repository found"))
     }
 
-    pub fn get_obj(&self, obj_sha: &str) -> Result<Obj> {
+    pub fn get_obj(&self, obj_sha: &str) -> Result<Box<dyn Obj>> {
         if obj_sha.len() == 40 {
             let obj_path = self.git_dir
                 .join("objects")
@@ -69,7 +69,7 @@ impl Repo {
                 .join(&obj_sha[2..]);
             if fs::metadata(&obj_path).is_ok() && obj_path.is_file() {
                 let raw_data = decompress(&obj_path.to_string_lossy().to_owned())?;
-                return Obj::new(raw_data);
+                return new_obj(raw_data);
             }
         } else if obj_sha.len() >= 4 {
             let mut obj_path = self.git_dir
@@ -81,7 +81,7 @@ impl Repo {
                 if filename.to_string_lossy().starts_with(&prefix) {
                     obj_path = obj_path.join(filename);
                     let raw_data = decompress(&obj_path.to_string_lossy())?;
-                    return Obj::new(raw_data);
+                    return new_obj(raw_data);
                 }
             }
         }
@@ -121,8 +121,9 @@ impl Repo {
     }
 
     pub fn all_refs(&self) -> Result<Vec<String>> {
-        let contents = self.all_refs_(self.git_dir.join("refs"))?;
-        Ok(contents)
+        Ok(self.all_refs_(
+            self.git_dir.join("refs")
+        )?)
     }
 
     fn all_refs_(&self, dir: PathBuf) -> Result<Vec<String>> {

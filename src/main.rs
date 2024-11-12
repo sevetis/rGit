@@ -4,7 +4,6 @@ use anyhow::Result;
 pub mod obj;
 
 mod repo;
-mod objects;
 mod commands;
 use commands::Commands;
 

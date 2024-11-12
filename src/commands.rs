@@ -1,10 +1,12 @@
 #![allow(unused_variables)]
 
+use std::fs;
+
 use anyhow::Result;
 use clap::{Subcommand, ArgGroup};
 
 use crate::repo::*;
-use crate::objects::*;
+use crate::obj::*;
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum Commands {
@@ -12,27 +14,35 @@ pub enum Commands {
         #[arg(default_value = ".")]
         repo_path: String
     },
+
     Add {
         files: Vec<String>  
     },
+
     Commit {
 
     },
+
     Status {
 
     },
+
     Log {
         
     },
+
     Rm {
 
     },
+
     Checkout {
 
     },
+
     CheckIgnore {
 
     },
+
     #[command(group(
         ArgGroup::new("flags")
             .required(true)
@@ -48,22 +58,28 @@ pub enum Commands {
         #[arg(long = None, short = 's')]
         obj_size: bool,
     },
+
     HashObject {
         file_path: String,
         #[arg(short = 'w')]
         write: bool,
     },
+
     LsTree {
         tree_sha: String,
     },
+
     WriteTree,
+
     RevParse {
 
     },
+
     ShowRef {
         #[arg(long = None, short = 's')]
         hash: bool,
     },
+
     Tag {
 
     }
@@ -134,7 +150,7 @@ pub fn cat_file(args: Commands) -> Result<()> {
 
 pub fn hash_object(args: Commands) -> Result<()> {
     if let Commands::HashObject{ file_path, write } = args {
-        let obj = Obj::new_blob(file_path)?;
+        let obj = new_obj(fs::read(file_path)?)?;
         let (hex_sha, content) = obj.hash()?;
         if write {
             let repo = Repo::find_repo()?;

@@ -2,7 +2,14 @@ use sha1::{Sha1, Digest};
 use anyhow::Result;
 
 mod blob;
+mod tree;
+mod commit;
 
+pub use blob::Blob;
+use tree::Tree;
+use commit::Commit;
+
+#[derive(PartialEq)]
 pub enum Type {
     Blob,
     Tree,
@@ -22,9 +29,19 @@ impl std::fmt::Display for Type {
 }
 
 
+pub fn new_obj(raw_data: Vec<u8>) -> Result<Box<dyn Obj>> {
+    match raw_data {
+        _ if raw_data.starts_with(b"blob") =>   Blob::new(raw_data),
+        _ if raw_data.starts_with(b"tree") =>   Tree::new(raw_data),
+        _ if raw_data.starts_with(b"commit") => Commit::new(raw_data),
+        _ => Err(anyhow::anyhow!("invalid object"))
+    }
+}
+
+
 pub trait Obj {
     /// Obj to string
-    fn to_string(&self) -> String;
+    fn to_string(&self) -> Result<String>;
 
     /// Obj type
     fn obj_type(&self) -> Type;
@@ -35,8 +52,7 @@ pub trait Obj {
     /// Obj content
     fn content(&self) -> &Vec<u8>;
 
-
-    /// Hash a Obj, Return hash code and corresponding content
+    /// Hash a Obj, Return hash code with corresponding content
     fn hash(&self) -> Result<(String, Vec<u8>)> {
         let header = format!("{} {}\0", self.obj_type(), self.size());
         let mut content = Vec::with_capacity(header.len() + self.size());
@@ -50,4 +66,6 @@ pub trait Obj {
         Ok((hex_sha, content))
     }
 
+    /// Return the hash code of the parent object of current object
+    fn parent(&self) -> Result<Option<String>>;
 }
