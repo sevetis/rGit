@@ -36,7 +36,7 @@ impl Obj for Blob {
         Ok(String::from_utf8_lossy(self.content()).into_owned())
     }
 
-    fn parent(&self) -> Result<Option<String>> {
-        Err(anyhow::anyhow!("no parent for blob object"))
+    fn parent(&self) -> Option<String> {
+        None
     }
 }

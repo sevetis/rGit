@@ -3,6 +3,7 @@ use crate::obj::*;
 
 pub struct Commit {
     content: Vec<u8>,
+    parent: Option<String>,
 }
 
 impl Commit {
@@ -12,11 +13,32 @@ impl Commit {
             .iter()
             .position(|&x| x == 0)
         {
-            return Ok(Box::new(Self {
-                content: raw_data[idx + 1..].to_vec(),
-            }));
+            Self::parse_commit(raw_data[idx + 1..].to_vec())
+        } else {
+            Err(anyhow::anyhow!("invalid commit object"))
         }
-        Err(anyhow::anyhow!("invalid commit object"))
+    }
+
+    /// helper function for new function
+    fn parse_commit(content: Vec<u8>) -> Result<Box<dyn Obj>> {
+        let lines: Vec<String> = content
+            .split(|&del| del == b'\n')
+            .map(|line| String::from_utf8_lossy(line).to_string())
+            .collect();
+
+        let mut parent = None;
+        lines.iter().for_each(|line| {
+            let idx = line.find(' ').unwrap();
+            let (label, stuff) = line.split_at(idx);
+            if label == "parent" {
+                parent = Some(stuff.to_string());
+            }
+        });
+
+        return Ok(Box::new(Self {
+            content,
+            parent
+        }));
     }
 }
 
@@ -38,14 +60,7 @@ impl Obj for Commit {
     }
 
     // TODO: refine function
-    fn parent(&self) -> Result<Option<String>> {
-        let content = self.to_string()?;
-        let lines: Vec<&str> = content.split('\n').collect();
-        if lines[1].starts_with("parent") {
-            let parent_sha = lines[1][7..].to_owned();
-            Ok(Some(parent_sha))
-        } else {
-            Ok(None)
-        }
+    fn parent(&self) -> Option<String> {
+        self.parent.clone()
     }
 }

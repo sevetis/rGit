@@ -5,7 +5,7 @@ mod blob;
 mod tree;
 mod commit;
 
-pub use blob::Blob;
+use blob::Blob;
 use tree::Tree;
 use commit::Commit;
 
@@ -67,5 +67,5 @@ pub trait Obj {
     }
 
     /// Return the hash code of the parent object of current object
-    fn parent(&self) -> Result<Option<String>>;
+    fn parent(&self) -> Option<String>;
 }

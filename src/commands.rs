@@ -111,7 +111,7 @@ pub fn log(args: Commands) -> Result<()> {
         let repo = Repo::find_repo()?;
         let mut cur_commit = repo.get_obj(&repo.head_ref()?)?;
         print!("{}", cur_commit.to_string()?);
-        while let Some(parent) = cur_commit.parent()? {
+        while let Some(parent) = cur_commit.parent() {
             cur_commit = repo.get_obj(&parent)?;
             println!("--------------------------------------------------");
             print!("{}", cur_commit.to_string()?);

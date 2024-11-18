@@ -70,7 +70,7 @@ impl Obj for Tree {
         Ok(ret)
     }
 
-    fn parent(&self) -> Result<Option<String>> {
-        Err(anyhow::anyhow!("no parent for tree object"))
+    fn parent(&self) -> Option<String> {
+        None
     }
 }
